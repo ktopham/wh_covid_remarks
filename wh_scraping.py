@@ -39,6 +39,8 @@ def date_convert(time_string):
     if len(art_month)==1:
         art_month = "0" + art_month
     art_day = time_separated[1].replace(",", "")
+    if len(art_day)==1:
+        art_day = "0" + art_day
     art_year = time_separated[2]
     art_date = art_year +"-"+ art_month + "-" + art_day
     return art_date
@@ -85,8 +87,6 @@ def get_article_links(url):
     #returns list of article links and reached_time
     return dict(list_of_links = list_of_links, reached_time = reached_time)
 
-# print(get_article_links("https://www.whitehouse.gov/briefings-statements/"))
-
 def page_through_wh_statements():
     #input: baseurl? or nothing
     #iterates through pages, accumulating lists of articles
@@ -113,8 +113,7 @@ def page_through_wh_statements():
                 break
         all_article_links.extend(article_links)
     print(len(all_article_links))
-
-# page_through_wh_statements()
+    return all_article_links
 
 def scrape_remarks(url):
     #input: individual url for a wh statement page
@@ -129,7 +128,6 @@ def scrape_remarks(url):
     soup = BeautifulSoup(wh_resp, 'html.parser')
     title = soup.find('h1', class_="page-header__title").text
     art_date = soup.find('time').text
-    print(art_date)
     art_date = date_convert(soup.find('time').text)
     print(art_date)
     content_div = soup.find('div', class_='page-content__content editor')
@@ -145,8 +143,6 @@ def scrape_remarks(url):
     remarks_dict = dict(text = text_compiled, title=title, art_date=art_date)
     return remarks_dict
 
-# remark = scrape_remarks("https://www.whitehouse.gov/briefings-statements/president-donald-j-trump-ensuring-states-testing-capacity-needed-safely-open-america/")
-# print(is_covid(remark['text']))
 
 def remarks_to_txt(article_dict, counter):
     #input: dictionary specifying
@@ -157,17 +153,26 @@ def remarks_to_txt(article_dict, counter):
     elif len(counter) == 2:
         counter = "0" + counter
     file_name = 'covid_remarks/' + article_dict['art_date'] + "-" + counter + ".txt"
-
-    with open(file_name, "w") as outfile:
-        outfile.writelines([article_dict['title'], article_dict['art_date'], article_dict['text']])
+    file_text = [article_dict['art_date']+"\n", article_dict['text']]
+    with open(file_name, "w", encoding='utf8') as outfile:
+        outfile.writelines(file_text)
     return file_name
-
-# print(remarks_to_txt(remark, 1))
 
 def crawl_wh_statements(list_of_article_links):
     #input: list of links to statement articles (the actual text we're going to convert)
-    #run scrape_remarks on the link
+    counter = 0
+    date_to_store = ""
+    for url in list_of_article_links:
+        remark_dict = scrape_remarks(url)
     #run is covid to check if it's covid, if so, run remarks_to_txt to save as a txt file with the date and title as the file name
-    if is_covid(article_text):
-        remarks_to_txt(article_text, counter)
+        if is_covid(remark_dict['text']):
+            if remark_dict['art_date'] != date_to_store:
+                counter = 0
+                date_to_store = remark_dict
+            counter += 1
+            remarks_to_txt(remark_dict, counter)
+
+if __name__ == '__main__':
+    list_of_article_links = page_through_wh_statements()
+    crawl_wh_statements(list_of_article_links)
     pass
