@@ -31,18 +31,23 @@ def is_covid(article_text):
     else:
         return False
 
-def check_date(time_string):
-    #input:a time string from the time element of an article
-    #tests to see if it's in the right time frame
-    # example_time_string = "Apr 3, 2020"
+def date_convert(time_string):
     time_separated = time_string.split(" ")
     art_month = time_separated[0]
+    art_month = art_month[:3]
     art_month = str(datetime.datetime.strptime(art_month, "%b").month)
     if len(art_month)==1:
         art_month = "0" + art_month
     art_day = time_separated[1].replace(",", "")
     art_year = time_separated[2]
     art_date = art_year +"-"+ art_month + "-" + art_day
+    return art_date
+
+def check_date(time_string):
+    #input:a time string from the time element of an article
+    #tests to see if it's in the right time frame
+    # example_time_string = "Apr 3, 2020"
+    art_date = date_convert(time_string)
     print(art_date)
     if art_date > "2020-01-19":
         return True
@@ -123,7 +128,10 @@ def scrape_remarks(url):
         write_to_cache(url, wh_resp)
     soup = BeautifulSoup(wh_resp, 'html.parser')
     title = soup.find('h1', class_="page-header__title").text
-    art_date = soup.find('time')
+    art_date = soup.find('time').text
+    print(art_date)
+    art_date = date_convert(soup.find('time').text)
+    print(art_date)
     content_div = soup.find('div', class_='page-content__content editor')
     for aside in content_div.find_all('aside'):
         aside.decompose()
@@ -134,22 +142,32 @@ def scrape_remarks(url):
     #     # print(p.text)
     #     text_compiled += "\n" + p.text
     # print(text_compiled)
-    print(text_compiled)
     remarks_dict = dict(text = text_compiled, title=title, art_date=art_date)
-    return text_compiled
+    return remarks_dict
 
-remark = scrape_remarks("https://www.whitehouse.gov/briefings-statements/president-donald-j-trump-ensuring-states-testing-capacity-needed-safely-open-america/")
-print(is_covid(remark))
+# remark = scrape_remarks("https://www.whitehouse.gov/briefings-statements/president-donald-j-trump-ensuring-states-testing-capacity-needed-safely-open-america/")
+# print(is_covid(remark['text']))
 
-def remarks_to_txt(article_text):
-    #input: text of an article
+def remarks_to_txt(article_dict, counter):
+    #input: dictionary specifying
     #saves text of the article as a txt file in a certain folder
-    pass
+    counter = str(counter)
+    if len(counter) == 1:
+        counter = "00" + counter
+    elif len(counter) == 2:
+        counter = "0" + counter
+    file_name = 'covid_remarks/' + article_dict['art_date'] + "-" + counter + ".txt"
+
+    with open(file_name, "w") as outfile:
+        outfile.writelines([article_dict['title'], article_dict['art_date'], article_dict['text']])
+    return file_name
+
+# print(remarks_to_txt(remark, 1))
 
 def crawl_wh_statements(list_of_article_links):
     #input: list of links to statement articles (the actual text we're going to convert)
     #run scrape_remarks on the link
     #run is covid to check if it's covid, if so, run remarks_to_txt to save as a txt file with the date and title as the file name
     if is_covid(article_text):
-        remarks_to_txt(article_text)
+        remarks_to_txt(article_text, counter)
     pass
